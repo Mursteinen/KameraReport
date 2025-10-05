@@ -375,6 +375,8 @@ function setupEventListeners() {
         }
         
         try {
+            showLoading('Importerer prosjekt...', 'Dette kan ta litt tid avhengig av størrelsen');
+            
             const formData = new FormData();
             formData.append('file', file);
             
@@ -384,6 +386,9 @@ function setupEventListeners() {
             });
             
             const result = await response.json();
+            
+            hideLoading();
+            
             if (response.ok) {
                 showToast(result.message || 'Prosjekt importert!');
                 loadProjects();
@@ -391,6 +396,7 @@ function setupEventListeners() {
                 throw new Error(result.error || 'Feil ved import');
             }
         } catch (err) {
+            hideLoading();
             showToast('Feil ved import av prosjekt: ' + err.message, 'error');
         }
         
@@ -445,6 +451,8 @@ function setupEventListeners() {
         }
         
         try {
+            showLoading('Importerer pakke...', 'Dette kan ta litt tid');
+            
             const text = await file.text();
             const importData = JSON.parse(text);
             
@@ -455,6 +463,9 @@ function setupEventListeners() {
             });
             
             const result = await response.json();
+            
+            hideLoading();
+            
             if (response.ok) {
                 showToast(result.message || 'Pakke importert!');
                 loadPackages(currentProjectId);
@@ -462,6 +473,7 @@ function setupEventListeners() {
                 throw new Error(result.error || 'Feil ved import');
             }
         } catch (err) {
+            hideLoading();
             showToast('Feil ved import av pakke: ' + err.message, 'error');
         }
         
@@ -1396,6 +1408,22 @@ async function handleMultiplePdfFiles(files) {
     } else {
         showToast(`${successCount} rørseksjon(er) ble lagt til, ${failCount} feilet.`);
     }
+}
+
+// Loading overlay functions
+function showLoading(text = 'Importerer...', subtext = 'Vennligst vent') {
+    const overlay = document.getElementById('loadingOverlay');
+    const loadingText = document.getElementById('loadingText');
+    const loadingSubtext = document.getElementById('loadingSubtext');
+    
+    loadingText.textContent = text;
+    loadingSubtext.textContent = subtext;
+    overlay.classList.add('active');
+}
+
+function hideLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.classList.remove('active');
 }
 
 // Utility function to escape HTML
