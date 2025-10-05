@@ -17,30 +17,36 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: false, // Set to false to work with Render.com's proxy
     httpOnly: true,
-    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-  }
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    sameSite: 'lax'
+  },
+  proxy: true // Trust the reverse proxy
 }));
 
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static files with authentication check for main app
-app.use((req, res, next) => {
+// Authentication middleware for protected routes
+const checkAuth = (req, res, next) => {
   // Allow access to login page and its assets without authentication
-  if (req.path === '/login.html' || req.path.startsWith('/assets/')) {
-    return express.static('public')(req, res, next);
+  if (req.path === '/login.html' || req.path.startsWith('/assets/') || req.path.startsWith('/api/auth/')) {
+    return next();
   }
   
-  // For other static files, check authentication
-  if (!req.session.userId && req.path !== '/api/auth/login') {
+  // For other routes, check authentication
+  if (!req.session.userId) {
     return res.redirect('/login.html');
   }
   
-  express.static('public')(req, res, next);
-});
+  next();
+};
+
+// Apply authentication check before serving static files
+app.use(checkAuth);
+app.use(express.static('public'));
 
 app.use('/uploads', express.static('uploads'));
 
