@@ -70,7 +70,7 @@ function setupEventListeners() {
             document.getElementById('newProjectForm').reset();
             loadProjects();
         } catch (err) {
-            alert('Feil ved opprettelse av prosjekt: ' + err.message);
+            showToast('Feil ved opprettelse av prosjekt: ' + err.message, 'error');
         }
     });
 
@@ -107,7 +107,7 @@ function setupEventListeners() {
                 document.getElementById('editProjectForm').reset();
                 loadProjects();
             } catch (err) {
-                alert('Feil ved sletting av prosjekt: ' + err.message);
+                showToast('Feil ved sletting av prosjekt: ' + err.message, 'error');
             }
         }
     });
@@ -140,7 +140,7 @@ function setupEventListeners() {
             document.getElementById('newPackageForm').reset();
             loadPackages(currentProjectId);
         } catch (err) {
-            alert('Feil ved opprettelse av pakke: ' + err.message);
+            showToast('Feil ved opprettelse av pakke: ' + err.message, 'error');
         }
     });
 
@@ -176,10 +176,10 @@ function setupEventListeners() {
             console.log('DEBUG: Reloading package details...');
             await loadPackageDetails(currentPackageId);
             
-            alert('Rørseksjonen ble oppdatert!');
+            showToast('Rørseksjonen ble oppdatert!');
         } catch (err) {
             console.error('DEBUG: Error updating line:', err);
-            alert('Feil ved oppdatering av rørseksjon: ' + err.message);
+            showToast('Feil ved oppdatering av rørseksjon: ' + err.message, 'error');
         }
     });
 
@@ -200,16 +200,16 @@ function setupEventListeners() {
             closeModal(editPackageModal);
             document.getElementById('editPackageForm').reset();
             loadPackages(currentProjectId);
-            alert('Pakken ble oppdatert!');
+            showToast('Pakken ble oppdatert!');
         } catch (err) {
-            alert('Feil ved oppdatering av pakke: ' + err.message);
+            showToast('Feil ved oppdatering av pakke: ' + err.message, 'error');
         }
     });
 
     // Export project
     document.getElementById('exportProjectBtn').addEventListener('click', async () => {
         if (!currentProjectId) {
-            alert('Ingen prosjekt valgt');
+            showToast('Ingen prosjekt valgt');
             return;
         }
         
@@ -256,7 +256,7 @@ function setupEventListeners() {
         
         // Check if it's a ZIP file
         if (!file.name.endsWith('.zip')) {
-            alert('Vennligst velg en ZIP-fil eksportert fra systemet');
+            showToast('Vennligst velg en ZIP-fil eksportert fra systemet');
             e.target.value = '';
             return;
         }
@@ -272,13 +272,13 @@ function setupEventListeners() {
             
             const result = await response.json();
             if (response.ok) {
-                alert(result.message || 'Prosjekt importert!');
+                showToast(result.message || 'Prosjekt importert!');
                 loadProjects();
             } else {
                 throw new Error(result.error || 'Feil ved import');
             }
         } catch (err) {
-            alert('Feil ved import av prosjekt: ' + err.message);
+            showToast('Feil ved import av prosjekt: ' + err.message, 'error');
         }
         
         e.target.value = ''; // Reset input
@@ -287,7 +287,7 @@ function setupEventListeners() {
     // Export package
     document.getElementById('exportPackageBtn').addEventListener('click', async () => {
         if (!currentPackageId) {
-            alert('Ingen pakke valgt');
+            showToast('Ingen pakke valgt');
             return;
         }
         
@@ -307,16 +307,16 @@ function setupEventListeners() {
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
             
-            alert('Pakke eksportert! Du kan importere denne filen senere.');
+            showToast('Pakke eksportert! Du kan importere denne filen senere.');
         } catch (err) {
-            alert('Feil ved eksport av pakke: ' + err.message);
+            showToast('Feil ved eksport av pakke: ' + err.message, 'error');
         }
     });
     
     // Import package
     document.getElementById('importPackageBtn').addEventListener('click', () => {
         if (!currentProjectId) {
-            alert('Velg et prosjekt først');
+            showToast('Velg et prosjekt først');
             return;
         }
         document.getElementById('importPackageFile').click();
@@ -327,7 +327,7 @@ function setupEventListeners() {
         if (!file) return;
         
         if (!currentProjectId) {
-            alert('Velg et prosjekt først');
+            showToast('Velg et prosjekt først');
             return;
         }
         
@@ -343,13 +343,13 @@ function setupEventListeners() {
             
             const result = await response.json();
             if (response.ok) {
-                alert(result.message || 'Pakke importert!');
+                showToast(result.message || 'Pakke importert!');
                 loadPackages(currentProjectId);
             } else {
                 throw new Error(result.error || 'Feil ved import');
             }
         } catch (err) {
-            alert('Feil ved import av pakke: ' + err.message);
+            showToast('Feil ved import av pakke: ' + err.message, 'error');
         }
         
         e.target.value = ''; // Reset input
@@ -358,7 +358,7 @@ function setupEventListeners() {
     // Print all packages in project
     document.getElementById('printAllPackagesBtn').addEventListener('click', async () => {
         if (!currentProjectId) {
-            alert('Ingen prosjekt valgt');
+            showToast('Ingen prosjekt valgt');
             return;
         }
         
@@ -388,7 +388,7 @@ function setupEventListeners() {
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
         } catch (err) {
-            alert('Feil ved generering av prosjektrapport: ' + err.message);
+            showToast('Feil ved generering av prosjektrapport: ' + err.message, 'error');
         }
     });
 
@@ -430,7 +430,7 @@ function setupEventListeners() {
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
         } catch (err) {
-            alert('Feil ved generering av PDF-rapport: ' + err.message);
+            showToast('Feil ved generering av PDF-rapport: ' + err.message, 'error');
         }
     });
 
@@ -443,9 +443,9 @@ function setupEventListeners() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ comment })
             });
-            alert('Kommentar lagret!');
+            showToast('Kommentar lagret!');
         } catch (err) {
-            alert('Feil ved lagring av kommentar: ' + err.message);
+            showToast('Feil ved lagring av kommentar: ' + err.message, 'error');
         }
     });
 
@@ -478,10 +478,10 @@ function setupEventListeners() {
             
             // Show message if PDF was split into multiple pages
             if (result.multiple) {
-                alert(`PDF-en ble delt opp i ${result.count} separate rørseksjoner (én per side).`);
+                showToast(`PDF-en ble delt opp i ${result.count} separate rørseksjoner (én per side).`);
             }
         } catch (err) {
-            alert('Feil ved tilføyelse av seksjon: ' + err.message);
+            showToast('Feil ved tilføyelse av seksjon: ' + err.message, 'error');
         }
     });
 
@@ -514,7 +514,7 @@ function setupEventListeners() {
             document.getElementById('imagePreview').innerHTML = '';
             loadPackageDetails(currentPackageId);
         } catch (err) {
-            alert('Feil ved tilføyelse av merknad: ' + err.message);
+            showToast('Feil ved tilføyelse av merknad: ' + err.message, 'error');
         }
     });
 
@@ -529,9 +529,9 @@ function setupEventListeners() {
             });
             closeModal(viewRemarkModal);
             loadPackageDetails(currentPackageId);
-            alert('Kommentar oppdatert!');
+            showToast('Kommentar oppdatert!');
         } catch (err) {
-            alert('Feil ved oppdatering av kommentar: ' + err.message);
+            showToast('Feil ved oppdatering av kommentar: ' + err.message, 'error');
         }
     });
 
@@ -545,7 +545,7 @@ function setupEventListeners() {
                 closeModal(viewRemarkModal);
                 loadPackageDetails(currentPackageId);
             } catch (err) {
-                alert('Feil ved sletting av merknad: ' + err.message);
+                showToast('Feil ved sletting av merknad: ' + err.message, 'error');
             }
         }
     });
@@ -722,7 +722,7 @@ async function loadPackageDetails(packageId) {
         // Setup drag and drop for remarks after lines are rendered
         setupRemarkDropZones();
     } catch (err) {
-        alert('Feil ved lasting av pakkedetaljer: ' + err.message);
+        showToast('Feil ved lasting av pakkedetaljer: ' + err.message, 'error');
     }
 }
 
@@ -766,7 +766,7 @@ function setupRemarkDropZones() {
             const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
             
             if (imageFiles.length === 0) {
-                alert('Vennligst dra et bilde (JPG, PNG, etc.)');
+                showToast('Vennligst dra et bilde (JPG, PNG, etc.)');
                 return;
             }
             
@@ -794,7 +794,7 @@ async function uploadRemarkImage(lineId, imageFile) {
         });
     } catch (err) {
         console.error('Error uploading remark:', err);
-        alert('Feil ved opplasting av merknad: ' + err.message);
+        showToast('Feil ved opplasting av merknad: ' + err.message, 'error');
     }
 }
 
@@ -810,7 +810,7 @@ async function viewProject(projectId) {
         loadPackages(projectId);
         showView('packages');
     } catch (err) {
-        alert('Feil ved lasting av prosjekt: ' + err.message);
+        showToast('Feil ved lasting av prosjekt: ' + err.message, 'error');
     }
 }
 
@@ -834,7 +834,7 @@ async function editProject(projectId) {
         const editProjectModal = document.getElementById('editProjectModal');
         openModal(editProjectModal);
     } catch (err) {
-        alert('Feil ved lasting av prosjekt: ' + err.message);
+        showToast('Feil ved lasting av prosjekt: ' + err.message, 'error');
     }
 }
 
@@ -847,7 +847,7 @@ async function deleteProject(projectId) {
             });
             loadProjects();
         } catch (err) {
-            alert('Feil ved sletting av prosjekt: ' + err.message);
+            showToast('Feil ved sletting av prosjekt: ' + err.message, 'error');
         }
     }
 }
@@ -861,7 +861,7 @@ async function deletePackage(packageId) {
             });
             loadPackages(currentProjectId);
         } catch (err) {
-            alert('Feil ved sletting av pakke: ' + err.message);
+            showToast('Feil ved sletting av pakke: ' + err.message, 'error');
         }
     }
 }
@@ -875,7 +875,7 @@ async function deleteLine(lineId) {
             });
             loadPackageDetails(currentPackageId);
         } catch (err) {
-            alert('Feil ved sletting av seksjon: ' + err.message);
+            showToast('Feil ved sletting av seksjon: ' + err.message, 'error');
         }
     }
 }
@@ -1133,7 +1133,7 @@ async function editPackage(packageId) {
         
         openModal(editPackageModal);
     } catch (err) {
-        alert('Feil ved lasting av pakke: ' + err.message);
+        showToast('Feil ved lasting av pakke: ' + err.message, 'error');
     }
 }
 
@@ -1191,7 +1191,7 @@ async function handlePdfFiles(files) {
     const pdfFiles = Array.from(files).filter(file => file.type === 'application/pdf');
     
     if (pdfFiles.length === 0) {
-        alert('Vennligst velg kun PDF-filer');
+        showToast('Vennligst velg kun PDF-filer');
         return;
     }
     
@@ -1279,9 +1279,9 @@ async function handleMultiplePdfFiles(files) {
     
     // Show result message
     if (failCount === 0) {
-        alert(`${successCount} rør${successCount > 1 ? 'seksjoner' : 'seksjon'} ble lagt til!`);
+        showToast(`${successCount} rør${successCount > 1 ? 'seksjoner' : 'seksjon'} ble lagt til!`);
     } else {
-        alert(`${successCount} rørseksjon(er) ble lagt til, ${failCount} feilet.`);
+        showToast(`${successCount} rørseksjon(er) ble lagt til, ${failCount} feilet.`);
     }
 }
 
@@ -1365,7 +1365,7 @@ async function initOCRConfig(pdfFile) {
         
     } catch (err) {
         console.error('Error loading PDF for OCR config:', err);
-        alert('Feil ved lasting av PDF for OCR-konfigurasjon');
+        showToast('Feil ved lasting av PDF for OCR-konfigurasjon', 'error');
     }
 }
 
@@ -1503,7 +1503,7 @@ async function skipOCRConfig() {
 
 async function saveOCRConfig() {
     if (ocrConfigState.regions.length !== 2) {
-        alert('Vennligst marker begge områdene');
+        showToast('Vennligst marker begge områdene');
         return;
     }
     
@@ -1523,7 +1523,7 @@ async function saveOCRConfig() {
         await uploadPDFWithOCR(ocrConfigState.pdfFile);
         
     } catch (err) {
-        alert('Feil ved lagring av OCR-konfigurasjon: ' + err.message);
+        showToast('Feil ved lagring av OCR-konfigurasjon: ' + err.message, 'error');
     }
 }
 
@@ -1544,10 +1544,10 @@ async function uploadPDFWithoutOCR(file) {
         loadPackageDetails(currentPackageId);
         
         if (result.multiple) {
-            alert(`PDF-en ble delt opp i ${result.count} separate rørseksjoner (én per side).`);
+            showToast(`PDF-en ble delt opp i ${result.count} separate rørseksjoner (én per side).`);
         }
     } catch (err) {
-        alert('Feil ved opplasting av PDF: ' + err.message);
+        showToast('Feil ved opplasting av PDF: ' + err.message, 'error');
     }
 }
 
@@ -1567,9 +1567,9 @@ async function uploadPDFWithOCR(file) {
         loadPackageDetails(currentPackageId);
         
         if (result.multiple) {
-            alert(`PDF-en ble delt opp i ${result.count} separate rørseksjoner med OCR-navngiving.`);
+            showToast(`PDF-en ble delt opp i ${result.count} separate rørseksjoner med OCR-navngiving.`);
         }
     } catch (err) {
-        alert('Feil ved opplasting av PDF: ' + err.message);
+        showToast('Feil ved opplasting av PDF: ' + err.message, 'error');
     }
 }
