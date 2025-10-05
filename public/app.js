@@ -219,17 +219,27 @@ function setupEventListeners() {
                 throw new Error('Feil ved eksport av prosjekt');
             }
             
+            // Get filename from Content-Disposition header
+            const contentDisposition = response.headers.get('Content-Disposition');
+            let filename = `project_${currentProjectId}_export.zip`;
+            if (contentDisposition) {
+                const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+                if (filenameMatch) {
+                    filename = filenameMatch[1];
+                }
+            }
+            
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `project_${currentProjectId}_export.json`;
+            a.download = filename;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
             
-            alert('Prosjekt eksportert! Du kan importere denne filen senere.');
+            alert('Prosjekt eksportert som ZIP med alle filer!');
         } catch (err) {
             alert('Feil ved eksport av prosjekt: ' + err.message);
         }
