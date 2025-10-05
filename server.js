@@ -890,7 +890,50 @@ app.get('/login.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
+// Initialize default admin user if no users exist
+async function initializeDefaultUser() {
+  try {
+    const { db } = require('./database');
+    
+    // Check if any users exist
+    const userCount = await new Promise((resolve, reject) => {
+      db.get('SELECT COUNT(*) as count FROM users', (err, row) => {
+        if (err) reject(err);
+        else resolve(row.count);
+      });
+    });
+
+    if (userCount === 0) {
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('Ingen brukere funnet - oppretter standard admin-bruker...');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      
+      const defaultUsername = 'admin';
+      const defaultPassword = 'admin123';
+      const passwordHash = await bcrypt.hash(defaultPassword, 10);
+      
+      await dbHelpers.createUser(
+        defaultUsername,
+        passwordHash,
+        'Administrator',
+        'admin@example.com'
+      );
+      
+      console.log('✅ Standard admin-bruker opprettet!');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log(`Brukernavn: ${defaultUsername}`);
+      console.log(`Passord: ${defaultPassword}`);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('⚠️  VIKTIG: Endre passordet etter første innlogging!');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    }
+  } catch (err) {
+    console.error('Feil ved initialisering av standard bruker:', err.message);
+  }
+}
+
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`Server running on http://localhost:${PORT}`);
+  await initializeDefaultUser();
 });
