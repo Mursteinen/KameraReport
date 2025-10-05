@@ -31,7 +31,7 @@ git commit -m "Initial commit - Ready for deployment"
 3. Follow GitHub's instructions to push your existing repository:
 
 ```bash
-git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git
+git remote add origin https://github.com/Mursteinen/KameraReport.git
 git branch -M main
 git push -u origin main
 ```
