@@ -52,11 +52,6 @@ function setupEventListeners() {
         openModal(document.getElementById('settingsModal'));
     });
 
-    // Close settings modal specifically
-    document.querySelector('#settingsModal .close-btn').addEventListener('click', () => {
-        closeModal(document.getElementById('settingsModal'));
-    });
-
     // Change password from settings
     document.getElementById('changePasswordBtnInSettings').addEventListener('click', () => {
         closeModal(document.getElementById('settingsModal'));
