@@ -47,6 +47,71 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Setup event listeners
 function setupEventListeners() {
+    // Change password button
+    document.getElementById('changePasswordBtn').addEventListener('click', () => {
+        document.getElementById('changePasswordForm').reset();
+        openModal(document.getElementById('changePasswordModal'));
+    });
+
+    // Change password form
+    document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const currentPassword = document.getElementById('currentPassword').value;
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        
+        // Validate passwords match
+        if (newPassword !== confirmPassword) {
+            showToast('De nye passordene stemmer ikke overens', 'error');
+            return;
+        }
+        
+        // Validate password length
+        if (newPassword.length < 6) {
+            showToast('Passordet må være minst 6 tegn', 'error');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/auth/change-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ currentPassword, newPassword })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                showToast('Passordet ble endret!');
+                closeModal(document.getElementById('changePasswordModal'));
+                document.getElementById('changePasswordForm').reset();
+            } else {
+                showToast(data.error || 'Feil ved endring av passord', 'error');
+            }
+        } catch (err) {
+            showToast('Feil ved endring av passord: ' + err.message, 'error');
+        }
+    });
+
+    // Logout button
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+        try {
+            const response = await fetch('/api/auth/logout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (response.ok) {
+                window.location.href = '/login.html';
+            } else {
+                showToast('Feil ved utlogging', 'error');
+            }
+        } catch (err) {
+            showToast('Feil ved utlogging: ' + err.message, 'error');
+        }
+    });
+
     // PDF Drop Zone
     setupPdfDropZone();
     

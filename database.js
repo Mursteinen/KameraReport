@@ -6,6 +6,20 @@ const db = new sqlite3.Database(dbPath);
 
 // Initialize database schema
 db.serialize(() => {
+  // Users table for authentication
+  db.run(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      full_name TEXT,
+      email TEXT,
+      is_active INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      last_login DATETIME
+    )
+  `);
+
   // Projects table
   db.run(`
     CREATE TABLE IF NOT EXISTS projects (
@@ -71,6 +85,53 @@ db.serialize(() => {
 
 // Database helper functions
 const dbHelpers = {
+  // Users
+  getUserByUsername: (username) => {
+    return new Promise((resolve, reject) => {
+      db.get('SELECT * FROM users WHERE username = ?', [username], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+  },
+
+  getUserById: (id) => {
+    return new Promise((resolve, reject) => {
+      db.get('SELECT * FROM users WHERE id = ?', [id], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+  },
+
+  createUser: (username, passwordHash, fullName, email) => {
+    return new Promise((resolve, reject) => {
+      db.run('INSERT INTO users (username, password_hash, full_name, email) VALUES (?, ?, ?, ?)', 
+        [username, passwordHash, fullName, email], function(err) {
+        if (err) reject(err);
+        else resolve({ id: this.lastID, username, fullName, email });
+      });
+    });
+  },
+
+  updateUserLastLogin: (userId) => {
+    return new Promise((resolve, reject) => {
+      db.run('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?', [userId], function(err) {
+        if (err) reject(err);
+        else resolve({ changes: this.changes });
+      });
+    });
+  },
+
+  getAllUsers: () => {
+    return new Promise((resolve, reject) => {
+      db.all('SELECT id, username, full_name, email, is_active, created_at, last_login FROM users ORDER BY username', [], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+  },
+
   // Projects
   getAllProjects: () => {
     return new Promise((resolve, reject) => {

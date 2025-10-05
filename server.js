@@ -3,16 +3,45 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const archiver = require('archiver');
+const bcrypt = require('bcryptjs');
+const session = require('express-session');
 const { dbHelpers } = require('./database');
 const { generatePDFReport, generateProjectReport } = require('./pdf-generator');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Session configuration
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'kamera-report-secret-key-change-in-production',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+  }
+}));
+
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static('public'));
+
+// Serve static files with authentication check for main app
+app.use((req, res, next) => {
+  // Allow access to login page and its assets without authentication
+  if (req.path === '/login.html' || req.path.startsWith('/assets/')) {
+    return express.static('public')(req, res, next);
+  }
+  
+  // For other static files, check authentication
+  if (!req.session.userId && req.path !== '/api/auth/login') {
+    return res.redirect('/login.html');
+  }
+  
+  express.static('public')(req, res, next);
+});
+
 app.use('/uploads', express.static('uploads'));
 
 // Create uploads directory if it doesn't exist
@@ -43,10 +72,130 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-// API Routes
+// Authentication middleware
+const requireAuth = (req, res, next) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Ikke autorisert. Vennligst logg inn.' });
+  }
+  next();
+};
+
+// Authentication Routes
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { username, password, rememberMe } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Brukernavn og passord er påkrevd' });
+    }
+
+    const user = await dbHelpers.getUserByUsername(username);
+    
+    if (!user) {
+      return res.status(401).json({ error: 'Ugyldig brukernavn eller passord' });
+    }
+
+    if (!user.is_active) {
+      return res.status(401).json({ error: 'Kontoen er deaktivert' });
+    }
+
+    const isValidPassword = await bcrypt.compare(password, user.password_hash);
+    
+    if (!isValidPassword) {
+      return res.status(401).json({ error: 'Ugyldig brukernavn eller passord' });
+    }
+
+    // Update last login
+    await dbHelpers.updateUserLastLogin(user.id);
+
+    // Set session
+    req.session.userId = user.id;
+    req.session.username = user.username;
+    
+    if (rememberMe) {
+      req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
+    }
+
+    res.json({ 
+      success: true, 
+      user: { 
+        id: user.id, 
+        username: user.username,
+        fullName: user.full_name
+      } 
+    });
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ error: 'En feil oppstod ved innlogging' });
+  }
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).json({ error: 'Kunne ikke logge ut' });
+    }
+    res.json({ success: true });
+  });
+});
+
+app.get('/api/auth/check', (req, res) => {
+  if (req.session.userId) {
+    res.json({ authenticated: true, userId: req.session.userId, username: req.session.username });
+  } else {
+    res.json({ authenticated: false });
+  }
+});
+
+app.post('/api/auth/change-password', requireAuth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Både nåværende og nytt passord er påkrevd' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'Nytt passord må være minst 6 tegn' });
+    }
+
+    // Get current user
+    const user = await dbHelpers.getUserById(req.session.userId);
+    
+    if (!user) {
+      return res.status(404).json({ error: 'Bruker ikke funnet' });
+    }
+
+    // Verify current password
+    const isValidPassword = await bcrypt.compare(currentPassword, user.password_hash);
+    
+    if (!isValidPassword) {
+      return res.status(401).json({ error: 'Nåværende passord er feil' });
+    }
+
+    // Hash new password
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+    // Update password in database
+    await new Promise((resolve, reject) => {
+      const { db } = require('./database');
+      db.run('UPDATE users SET password_hash = ? WHERE id = ?', [newPasswordHash, user.id], function(err) {
+        if (err) reject(err);
+        else resolve({ changes: this.changes });
+      });
+    });
+
+    res.json({ success: true, message: 'Passordet ble endret' });
+  } catch (err) {
+    console.error('Change password error:', err);
+    res.status(500).json({ error: 'En feil oppstod ved endring av passord' });
+  }
+});
+
+// API Routes (Protected)
 
 // Projects
-app.get('/api/projects', async (req, res) => {
+app.get('/api/projects', requireAuth, async (req, res) => {
   try {
     const projects = await dbHelpers.getAllProjects();
     res.json(projects);
@@ -55,7 +204,7 @@ app.get('/api/projects', async (req, res) => {
   }
 });
 
-app.get('/api/projects/:id', async (req, res) => {
+app.get('/api/projects/:id', requireAuth, async (req, res) => {
   try {
     const project = await dbHelpers.getProjectById(req.params.id);
     if (!project) {
@@ -67,7 +216,7 @@ app.get('/api/projects/:id', async (req, res) => {
   }
 });
 
-app.post('/api/projects', async (req, res) => {
+app.post('/api/projects', requireAuth, async (req, res) => {
   try {
     const { projectNumber, customerName } = req.body;
     const newProject = await dbHelpers.createProject(projectNumber, customerName);
@@ -77,7 +226,7 @@ app.post('/api/projects', async (req, res) => {
   }
 });
 
-app.put('/api/projects/:id', async (req, res) => {
+app.put('/api/projects/:id', requireAuth, async (req, res) => {
   try {
     const { projectNumber, customerName } = req.body;
     await dbHelpers.updateProject(req.params.id, projectNumber, customerName);
@@ -87,7 +236,7 @@ app.put('/api/projects/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/projects/:id', async (req, res) => {
+app.delete('/api/projects/:id', requireAuth, async (req, res) => {
   try {
     await dbHelpers.deleteProject(req.params.id);
     res.json({ success: true });
@@ -97,7 +246,7 @@ app.delete('/api/projects/:id', async (req, res) => {
 });
 
 // Test Packages
-app.get('/api/projects/:projectId/packages', async (req, res) => {
+app.get('/api/projects/:projectId/packages', requireAuth, async (req, res) => {
   try {
     const packages = await dbHelpers.getTestPackagesByProject(req.params.projectId);
     res.json(packages);
@@ -106,7 +255,7 @@ app.get('/api/projects/:projectId/packages', async (req, res) => {
   }
 });
 
-app.get('/api/packages', async (req, res) => {
+app.get('/api/packages', requireAuth, async (req, res) => {
   try {
     const packages = await dbHelpers.getAllTestPackages();
     res.json(packages);
@@ -115,7 +264,7 @@ app.get('/api/packages', async (req, res) => {
   }
 });
 
-app.get('/api/packages/:id', async (req, res) => {
+app.get('/api/packages/:id', requireAuth, async (req, res) => {
   try {
     const packageData = await dbHelpers.getFullPackage(req.params.id);
     if (!packageData) {
@@ -127,7 +276,7 @@ app.get('/api/packages/:id', async (req, res) => {
   }
 });
 
-app.post('/api/projects/:projectId/packages', async (req, res) => {
+app.post('/api/projects/:projectId/packages', requireAuth, async (req, res) => {
   try {
     const { name, comment, pipeType, lining } = req.body;
     const newPackage = await dbHelpers.createTestPackage(
@@ -143,7 +292,7 @@ app.post('/api/projects/:projectId/packages', async (req, res) => {
   }
 });
 
-app.put('/api/packages/:id/comment', async (req, res) => {
+app.put('/api/packages/:id/comment', requireAuth, async (req, res) => {
   try {
     const { comment } = req.body;
     await dbHelpers.updateTestPackageComment(req.params.id, comment);
@@ -153,7 +302,7 @@ app.put('/api/packages/:id/comment', async (req, res) => {
   }
 });
 
-app.put('/api/packages/:id', async (req, res) => {
+app.put('/api/packages/:id', requireAuth, async (req, res) => {
   try {
     const { name, comment, pipeType, lining } = req.body;
     await dbHelpers.updateTestPackage(req.params.id, name, comment || '', pipeType || '', lining || '');
@@ -163,7 +312,7 @@ app.put('/api/packages/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/packages/:id', async (req, res) => {
+app.delete('/api/packages/:id', requireAuth, async (req, res) => {
   try {
     await dbHelpers.deleteTestPackage(req.params.id);
     res.json({ success: true });
@@ -173,7 +322,7 @@ app.delete('/api/packages/:id', async (req, res) => {
 });
 
 // PDF Lines
-app.get('/api/packages/:packageId/lines', async (req, res) => {
+app.get('/api/packages/:packageId/lines', requireAuth, async (req, res) => {
   try {
     const lines = await dbHelpers.getPdfLinesByPackage(req.params.packageId);
     res.json(lines);
@@ -182,7 +331,7 @@ app.get('/api/packages/:packageId/lines', async (req, res) => {
   }
 });
 
-app.post('/api/packages/:packageId/lines', upload.single('pdf'), async (req, res) => {
+app.post('/api/packages/:packageId/lines', requireAuth, upload.single('pdf'), async (req, res) => {
   try {
     const { name, lineNumber } = req.body;
     
@@ -262,7 +411,7 @@ app.post('/api/packages/:packageId/lines', upload.single('pdf'), async (req, res
   }
 });
 
-app.put('/api/lines/:id', async (req, res) => {
+app.put('/api/lines/:id', requireAuth, async (req, res) => {
   try {
     console.log('DEBUG SERVER: PUT /api/lines/:id');
     console.log('DEBUG SERVER: Line ID:', req.params.id);
@@ -279,7 +428,7 @@ app.put('/api/lines/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/lines/:id', async (req, res) => {
+app.delete('/api/lines/:id', requireAuth, async (req, res) => {
   try {
     await dbHelpers.deletePdfLine(req.params.id);
     res.json({ success: true });
@@ -289,7 +438,7 @@ app.delete('/api/lines/:id', async (req, res) => {
 });
 
 // Remarks
-app.get('/api/lines/:lineId/remarks', async (req, res) => {
+app.get('/api/lines/:lineId/remarks', requireAuth, async (req, res) => {
   try {
     const remarks = await dbHelpers.getRemarksByPdfLine(req.params.lineId);
     res.json(remarks);
@@ -298,7 +447,7 @@ app.get('/api/lines/:lineId/remarks', async (req, res) => {
   }
 });
 
-app.post('/api/lines/:lineId/remarks', upload.single('image'), async (req, res) => {
+app.post('/api/lines/:lineId/remarks', requireAuth, upload.single('image'), async (req, res) => {
   try {
     const { comment } = req.body;
     if (!req.file) {
@@ -316,7 +465,7 @@ app.post('/api/lines/:lineId/remarks', upload.single('image'), async (req, res) 
   }
 });
 
-app.put('/api/remarks/:id/comment', async (req, res) => {
+app.put('/api/remarks/:id/comment', requireAuth, async (req, res) => {
   try {
     const { comment } = req.body;
     await dbHelpers.updateRemarkComment(req.params.id, comment);
@@ -326,7 +475,7 @@ app.put('/api/remarks/:id/comment', async (req, res) => {
   }
 });
 
-app.delete('/api/remarks/:id', async (req, res) => {
+app.delete('/api/remarks/:id', requireAuth, async (req, res) => {
   try {
     await dbHelpers.deleteRemark(req.params.id);
     res.json({ success: true });
@@ -336,7 +485,7 @@ app.delete('/api/remarks/:id', async (req, res) => {
 });
 
 // Generate PDF Report for single package
-app.get('/api/packages/:id/generate-report', async (req, res) => {
+app.get('/api/packages/:id/generate-report', requireAuth, async (req, res) => {
     try {
         const packageData = await dbHelpers.getFullPackage(req.params.id);
         if (!packageData) {
@@ -375,7 +524,7 @@ app.get('/api/packages/:id/generate-report', async (req, res) => {
 });
 
 // Export project with all data and files as ZIP
-app.get('/api/projects/:id/export', async (req, res) => {
+app.get('/api/projects/:id/export', requireAuth, async (req, res) => {
     try {
         const project = await dbHelpers.getProjectById(req.params.id);
         if (!project) {
@@ -469,7 +618,7 @@ app.get('/api/projects/:id/export', async (req, res) => {
 const importUpload = multer({ dest: path.join(__dirname, 'uploads', 'temp') });
 const AdmZip = require('adm-zip');
 
-app.post('/api/projects/import', importUpload.single('file'), async (req, res) => {
+app.post('/api/projects/import', requireAuth, importUpload.single('file'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
@@ -571,7 +720,7 @@ app.post('/api/projects/import', importUpload.single('file'), async (req, res) =
 });
 
 // Export single package
-app.get('/api/packages/:id/export', async (req, res) => {
+app.get('/api/packages/:id/export', requireAuth, async (req, res) => {
     try {
         const packageData = await dbHelpers.getFullPackage(req.params.id);
         if (!packageData) {
@@ -595,7 +744,7 @@ app.get('/api/packages/:id/export', async (req, res) => {
 });
 
 // Import package to current project
-app.post('/api/projects/:projectId/packages/import', async (req, res) => {
+app.post('/api/projects/:projectId/packages/import', requireAuth, async (req, res) => {
     try {
         const importData = req.body;
         
@@ -645,7 +794,7 @@ app.post('/api/projects/:projectId/packages/import', async (req, res) => {
 });
 
 // Generate PDF Report for all packages in a project (as ZIP)
-app.get('/api/projects/:id/generate-report', async (req, res) => {
+app.get('/api/projects/:id/generate-report', requireAuth, async (req, res) => {
     try {
         const project = await dbHelpers.getProjectById(req.params.id);
         if (!project) {
@@ -727,7 +876,18 @@ app.get('/api/projects/:id/generate-report', async (req, res) => {
 
 // Serve main page
 app.get('/', (req, res) => {
+    if (!req.session.userId) {
+        return res.redirect('/login.html');
+    }
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.get('/login.html', (req, res) => {
+    // If already logged in, redirect to main app
+    if (req.session.userId) {
+        return res.redirect('/');
+    }
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
 // Start server

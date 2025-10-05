@@ -4,6 +4,7 @@ A Node.js web application for managing camera inspection reports with test packa
 
 ## Features
 
+- **User Authentication**: Secure login system with session management
 - **Test Packages**: Create and manage test packages with comments
 - **PDF Lines**: Add multiple PDF files or lines to each test package
 - **Remarks**: Attach images with comments to specific lines
@@ -39,15 +40,32 @@ The application manages three levels of data:
 npm install
 ```
 
-2. Start the server:
+2. Create an admin user (first time only):
+```bash
+node create-admin.js
+```
+This will create a default admin user with:
+- Username: `admin`
+- Password: `admin123`
+
+You can also specify custom credentials:
+```bash
+node create-admin.js myusername mypassword "Full Name" "email@example.com"
+```
+
+3. Start the server:
 ```bash
 npm start
 ```
 
-3. Open your browser and navigate to:
+4. Open your browser and navigate to:
 ```
 http://localhost:3000
 ```
+
+5. Log in with your admin credentials
+
+**Important:** Change the default password after first login!
 
 ### Production Deployment
 
@@ -59,6 +77,41 @@ Run in development mode with auto-reload:
 ```bash
 npm run dev
 ```
+
+## Authentication
+
+The application uses session-based authentication to protect all data and functionality.
+
+### Default Credentials
+- **Username:** admin
+- **Password:** admin123
+
+### Changing Your Password
+
+After logging in, you can change your password:
+
+1. Click the "🔑 Endre passord" button in the top right corner
+2. Enter your current password
+3. Enter your new password (minimum 6 characters)
+4. Confirm your new password
+5. Click "Endre passord"
+
+**Important:** It's highly recommended to change the default password immediately after first login!
+
+### Creating Additional Users
+
+To create additional users, use the `create-admin.js` script:
+
+```bash
+node create-admin.js newuser password123 "User Name" "user@example.com"
+```
+
+### Security Notes
+
+- All routes are protected and require authentication
+- Sessions are stored server-side and expire after 7 days of inactivity
+- Passwords are hashed using bcrypt
+- For production, set the `SESSION_SECRET` environment variable to a secure random string
 
 ## Usage
 
