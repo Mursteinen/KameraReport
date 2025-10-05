@@ -159,23 +159,6 @@ function setupEventListeners() {
         }
     });
 
-    // Logout button
-    document.getElementById('logoutBtn').addEventListener('click', async () => {
-        try {
-            const response = await fetch('/api/auth/logout', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            });
-            
-            if (response.ok) {
-                window.location.href = '/login.html';
-            } else {
-                showToast('Feil ved utlogging', 'error');
-            }
-        } catch (err) {
-            showToast('Feil ved utlogging: ' + err.message, 'error');
-        }
-    });
 
     // PDF Drop Zone
     setupPdfDropZone();
