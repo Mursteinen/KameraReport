@@ -206,6 +206,139 @@ function setupEventListeners() {
         }
     });
 
+    // Export project
+    document.getElementById('exportProjectBtn').addEventListener('click', async () => {
+        if (!currentProjectId) {
+            alert('Ingen prosjekt valgt');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/projects/${currentProjectId}/export`);
+            if (!response.ok) {
+                throw new Error('Feil ved eksport av prosjekt');
+            }
+            
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `project_${currentProjectId}_export.json`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            
+            alert('Prosjekt eksportert! Du kan importere denne filen senere.');
+        } catch (err) {
+            alert('Feil ved eksport av prosjekt: ' + err.message);
+        }
+    });
+    
+    // Import project
+    document.getElementById('importProjectBtn').addEventListener('click', () => {
+        document.getElementById('importProjectFile').click();
+    });
+    
+    document.getElementById('importProjectFile').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        try {
+            const text = await file.text();
+            const importData = JSON.parse(text);
+            
+            const response = await fetch('/api/projects/import', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(importData)
+            });
+            
+            const result = await response.json();
+            if (response.ok) {
+                alert(result.message || 'Prosjekt importert!');
+                loadProjects();
+            } else {
+                throw new Error(result.error || 'Feil ved import');
+            }
+        } catch (err) {
+            alert('Feil ved import av prosjekt: ' + err.message);
+        }
+        
+        e.target.value = ''; // Reset input
+    });
+    
+    // Export package
+    document.getElementById('exportPackageBtn').addEventListener('click', async () => {
+        if (!currentPackageId) {
+            alert('Ingen pakke valgt');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/packages/${currentPackageId}/export`);
+            if (!response.ok) {
+                throw new Error('Feil ved eksport av pakke');
+            }
+            
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `package_${currentPackageId}_export.json`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            
+            alert('Pakke eksportert! Du kan importere denne filen senere.');
+        } catch (err) {
+            alert('Feil ved eksport av pakke: ' + err.message);
+        }
+    });
+    
+    // Import package
+    document.getElementById('importPackageBtn').addEventListener('click', () => {
+        if (!currentProjectId) {
+            alert('Velg et prosjekt først');
+            return;
+        }
+        document.getElementById('importPackageFile').click();
+    });
+    
+    document.getElementById('importPackageFile').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        if (!currentProjectId) {
+            alert('Velg et prosjekt først');
+            return;
+        }
+        
+        try {
+            const text = await file.text();
+            const importData = JSON.parse(text);
+            
+            const response = await fetch(`/api/projects/${currentProjectId}/packages/import`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(importData)
+            });
+            
+            const result = await response.json();
+            if (response.ok) {
+                alert(result.message || 'Pakke importert!');
+                loadPackages(currentProjectId);
+            } else {
+                throw new Error(result.error || 'Feil ved import');
+            }
+        } catch (err) {
+            alert('Feil ved import av pakke: ' + err.message);
+        }
+        
+        e.target.value = ''; // Reset input
+    });
+
     // Print all packages in project
     document.getElementById('printAllPackagesBtn').addEventListener('click', async () => {
         if (!currentProjectId) {

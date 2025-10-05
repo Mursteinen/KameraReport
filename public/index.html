@@ -18,9 +18,13 @@
             <div id="projectsView" class="view active">
                 <div class="section-header">
                     <h2>Prosjekter</h2>
-                    <button id="newProjectBtn" class="btn btn-primary">+ Nytt prosjekt</button>
+                    <div style="display: flex; gap: 10px;">
+                        <button id="importProjectBtn" class="btn btn-secondary">📥 Importer prosjekt</button>
+                        <button id="newProjectBtn" class="btn btn-primary">+ Nytt prosjekt</button>
+                    </div>
                 </div>
                 <div id="projectsList" class="projects-list"></div>
+                <input type="file" id="importProjectFile" accept=".json" style="display: none;">
             </div>
 
             <!-- Packages List View -->
@@ -29,11 +33,14 @@
                     <button id="backToProjectsBtn" class="btn btn-secondary">← Tilbake til prosjekter</button>
                     <h2 id="projectTitle">Testpakker</h2>
                     <div style="display: flex; gap: 10px;">
+                        <button id="exportProjectBtn" class="btn btn-secondary">📤 Eksporter prosjekt</button>
+                        <button id="importPackageBtn" class="btn btn-secondary">📥 Importer pakke</button>
                         <button id="printAllPackagesBtn" class="btn btn-success">📄 Skriv ut alle pakker</button>
                         <button id="newPackageBtn" class="btn btn-primary">+ Ny pakke</button>
                     </div>
                 </div>
                 <div id="packagesList" class="packages-list"></div>
+                <input type="file" id="importPackageFile" accept=".json" style="display: none;">
             </div>
 
             <!-- Package Details View -->
@@ -41,7 +48,10 @@
                 <div class="section-header">
                     <button id="backToPackagesBtn" class="btn btn-secondary">← Tilbake til pakker</button>
                     <h2 id="packageTitle"></h2>
-                    <button id="printReportBtn" class="btn btn-success">� Generer PDF-rapport</button>
+                    <div style="display: flex; gap: 10px;">
+                        <button id="exportPackageBtn" class="btn btn-secondary">📤 Eksporter pakke</button>
+                        <button id="printReportBtn" class="btn btn-success">📄 Generer PDF-rapport</button>
+                    </div>
                 </div>
 
                 <!-- Print Summary Section (hidden on screen, shown in print) -->

@@ -374,6 +374,169 @@ app.get('/api/packages/:id/generate-report', async (req, res) => {
     }
 });
 
+// Export project with all data as JSON
+app.get('/api/projects/:id/export', async (req, res) => {
+    try {
+        const project = await dbHelpers.getProjectById(req.params.id);
+        if (!project) {
+            return res.status(404).json({ error: 'Project not found' });
+        }
+
+        const packages = await dbHelpers.getTestPackagesByProject(req.params.id);
+        const exportData = {
+            version: '1.0',
+            exportDate: new Date().toISOString(),
+            project: project,
+            packages: []
+        };
+
+        // Get full data for each package
+        for (const pkg of packages) {
+            const fullPackage = await dbHelpers.getFullPackage(pkg.id);
+            exportData.packages.push(fullPackage);
+        }
+
+        // Send as JSON file
+        const filename = `${project.project_number.replace(/[^a-z0-9]/gi, '_')}_export.json`;
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.json(exportData);
+    } catch (err) {
+        console.error('Error exporting project:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Import project from JSON
+app.post('/api/projects/import', async (req, res) => {
+    try {
+        const importData = req.body;
+        
+        if (!importData.project || !importData.packages) {
+            return res.status(400).json({ error: 'Invalid import format' });
+        }
+
+        // Create new project
+        const newProject = await dbHelpers.createProject(
+            importData.project.project_number + ' (Importert)',
+            importData.project.customer_name
+        );
+
+        // Create packages
+        for (const pkg of importData.packages) {
+            const newPackage = await dbHelpers.createTestPackage(
+                newProject.id,
+                pkg.name,
+                pkg.comment || '',
+                pkg.pipe_type || '',
+                pkg.lining || ''
+            );
+
+            // Create lines
+            for (const line of pkg.pdfLines) {
+                const newLine = await dbHelpers.createPdfLine(
+                    newPackage.id,
+                    line.name,
+                    null, // PDF paths won't be imported
+                    line.line_number
+                );
+
+                // Create remarks (without images)
+                for (const remark of line.remarks) {
+                    await dbHelpers.createRemark(
+                        newLine.id,
+                        '', // Image paths won't be imported
+                        remark.comment || ''
+                    );
+                }
+            }
+        }
+
+        res.json({ 
+            success: true, 
+            projectId: newProject.id,
+            message: 'Prosjekt importert uten filer (PDFs og bilder)'
+        });
+    } catch (err) {
+        console.error('Error importing project:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Export single package
+app.get('/api/packages/:id/export', async (req, res) => {
+    try {
+        const packageData = await dbHelpers.getFullPackage(req.params.id);
+        if (!packageData) {
+            return res.status(404).json({ error: 'Package not found' });
+        }
+
+        const exportData = {
+            version: '1.0',
+            exportDate: new Date().toISOString(),
+            package: packageData
+        };
+
+        const filename = `${packageData.name.replace(/[^a-z0-9]/gi, '_')}_export.json`;
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.json(exportData);
+    } catch (err) {
+        console.error('Error exporting package:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Import package to current project
+app.post('/api/projects/:projectId/packages/import', async (req, res) => {
+    try {
+        const importData = req.body;
+        
+        if (!importData.package) {
+            return res.status(400).json({ error: 'Invalid import format' });
+        }
+
+        const pkg = importData.package;
+        
+        // Create package
+        const newPackage = await dbHelpers.createTestPackage(
+            req.params.projectId,
+            pkg.name + ' (Importert)',
+            pkg.comment || '',
+            pkg.pipe_type || '',
+            pkg.lining || ''
+        );
+
+        // Create lines
+        for (const line of pkg.pdfLines) {
+            const newLine = await dbHelpers.createPdfLine(
+                newPackage.id,
+                line.name,
+                null,
+                line.line_number
+            );
+
+            // Create remarks
+            for (const remark of line.remarks) {
+                await dbHelpers.createRemark(
+                    newLine.id,
+                    '',
+                    remark.comment || ''
+                );
+            }
+        }
+
+        res.json({ 
+            success: true, 
+            packageId: newPackage.id,
+            message: 'Pakke importert uten filer (PDFs og bilder)'
+        });
+    } catch (err) {
+        console.error('Error importing package:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Generate PDF Report for all packages in a project (as ZIP)
 app.get('/api/projects/:id/generate-report', async (req, res) => {
     try {
