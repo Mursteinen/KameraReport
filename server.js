@@ -48,10 +48,9 @@ const checkAuth = (req, res, next) => {
 app.use(checkAuth);
 app.use(express.static('public'));
 
-app.use('/uploads', express.static('uploads'));
-
-// Create uploads directory if it doesn't exist
-const uploadsDir = path.join(__dirname, 'uploads');
+// Use persistent disk path if available (Render.com), otherwise use local path
+const dataDir = process.env.DATA_DIR || __dirname;
+const uploadsDir = path.join(dataDir, 'uploads');
 const pdfsDir = path.join(uploadsDir, 'pdfs');
 const remarksDir = path.join(uploadsDir, 'remarks');
 
@@ -60,6 +59,10 @@ const remarksDir = path.join(uploadsDir, 'remarks');
     fs.mkdirSync(dir, { recursive: true });
   }
 });
+
+console.log(`Uploads directory: ${uploadsDir}`);
+
+app.use('/uploads', express.static(uploadsDir));
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -195,6 +198,82 @@ app.post('/api/auth/change-password', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('Change password error:', err);
     res.status(500).json({ error: 'En feil oppstod ved endring av passord' });
+  }
+});
+
+app.post('/api/auth/reset-data', requireAuth, async (req, res) => {
+  try {
+    const { password, confirmText } = req.body;
+
+    if (!password || confirmText !== 'SLETT ALT') {
+      return res.status(400).json({ error: 'Du må skrive "SLETT ALT" og oppgi passordet ditt' });
+    }
+
+    // Get current user
+    const user = await dbHelpers.getUserById(req.session.userId);
+    
+    if (!user) {
+      return res.status(404).json({ error: 'Bruker ikke funnet' });
+    }
+
+    // Verify password
+    const isValidPassword = await bcrypt.compare(password, user.password_hash);
+    
+    if (!isValidPassword) {
+      return res.status(401).json({ error: 'Feil passord' });
+    }
+
+    // Delete all data from database
+    const { db } = require('./database');
+    await new Promise((resolve, reject) => {
+      db.serialize(() => {
+        db.run('DELETE FROM remarks', (err) => {
+          if (err) console.error('Error deleting remarks:', err);
+        });
+        db.run('DELETE FROM pdf_lines', (err) => {
+          if (err) console.error('Error deleting pdf_lines:', err);
+        });
+        db.run('DELETE FROM test_packages', (err) => {
+          if (err) console.error('Error deleting test_packages:', err);
+        });
+        db.run('DELETE FROM projects', (err) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve();
+          }
+        });
+      });
+    });
+
+    // Delete all uploaded files
+    const deleteDirectory = (dirPath) => {
+      if (fs.existsSync(dirPath)) {
+        fs.readdirSync(dirPath).forEach(file => {
+          const filePath = path.join(dirPath, file);
+          if (fs.lstatSync(filePath).isDirectory()) {
+            deleteDirectory(filePath);
+          } else {
+            fs.unlinkSync(filePath);
+          }
+        });
+      }
+    };
+
+    deleteDirectory(pdfsDir);
+    deleteDirectory(remarksDir);
+
+    // Recreate empty directories
+    [pdfsDir, remarksDir].forEach(dir => {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+    });
+
+    res.json({ success: true, message: 'Alle data er slettet' });
+  } catch (err) {
+    console.error('Reset data error:', err);
+    res.status(500).json({ error: 'En feil oppstod ved sletting av data' });
   }
 });
 

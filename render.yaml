@@ -7,7 +7,9 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 18
+      - key: DATA_DIR
+        value: /data
     disk:
       name: data
-      mountPath: /opt/render/project/src
+      mountPath: /data
       sizeGB: 1

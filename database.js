@@ -1,7 +1,17 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const fs = require('fs');
 
-const dbPath = path.join(__dirname, 'kamera_reports.db');
+// Use persistent disk path if available (Render.com), otherwise use local path
+const dataDir = process.env.DATA_DIR || __dirname;
+const dbPath = path.join(dataDir, 'kamera_reports.db');
+
+// Ensure data directory exists
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
+
+console.log(`Database path: ${dbPath}`);
 const db = new sqlite3.Database(dbPath);
 
 // Initialize database schema
