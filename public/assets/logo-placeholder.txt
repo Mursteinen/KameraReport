@@ -1,0 +1,6 @@
+Plasser firmalogoen din her som logo.png eller logo.jpg
+
+For beste resultat:
+- Bruk PNG eller JPG format (SVG må konverteres)
+- Anbefalt størrelse: 200x100 piksler
+- Navn filen: logo.png eller logo.jpg

@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: kamera-reports
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 18.x
+    disk:
+      name: data
+      mountPath: /opt/render/project/src
+      sizeGB: 1

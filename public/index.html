@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kamerainspeksjonsrapporter</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Kamerainspeksjonsrapporter</h1>
+            <nav id="breadcrumb" class="breadcrumb"></nav>
+        </header>
+
+        <main>
+            <!-- Projects List View -->
+            <div id="projectsView" class="view active">
+                <div class="section-header">
+                    <h2>Prosjekter</h2>
+                    <button id="newProjectBtn" class="btn btn-primary">+ Nytt prosjekt</button>
+                </div>
+                <div id="projectsList" class="projects-list"></div>
+            </div>
+
+            <!-- Packages List View -->
+            <div id="packagesView" class="view">
+                <div class="section-header">
+                    <button id="backToProjectsBtn" class="btn btn-secondary">← Tilbake til prosjekter</button>
+                    <h2 id="projectTitle">Testpakker</h2>
+                    <div style="display: flex; gap: 10px;">
+                        <button id="printAllPackagesBtn" class="btn btn-success">📄 Skriv ut alle pakker</button>
+                        <button id="newPackageBtn" class="btn btn-primary">+ Ny pakke</button>
+                    </div>
+                </div>
+                <div id="packagesList" class="packages-list"></div>
+            </div>
+
+            <!-- Package Details View -->
+            <div id="packageDetailsView" class="view">
+                <div class="section-header">
+                    <button id="backToPackagesBtn" class="btn btn-secondary">← Tilbake til pakker</button>
+                    <h2 id="packageTitle"></h2>
+                    <button id="printReportBtn" class="btn btn-success">� Generer PDF-rapport</button>
+                </div>
+
+                <!-- Print Summary Section (hidden on screen, shown in print) -->
+                <div id="printSummary" class="print-summary">
+                    <h2>Inspeksjonsrapport - Sammendrag</h2>
+                    <div id="summaryContent"></div>
+                </div>
+                
+                <div class="package-comment-section">
+                    <h3>Pakkekommentar</h3>
+                    <textarea id="packageComment" rows="3" placeholder="Legg til en kommentar for denne pakken..."></textarea>
+                    <button id="savePackageCommentBtn" class="btn btn-primary">Lagre kommentar</button>
+                </div>
+
+                <div class="section-header">
+                    <h3>Rørseksjoner (ISO-tegninger)</h3>
+                    <button id="newLineBtn" class="btn btn-primary">+ Legg til rørseksjon</button>
+                </div>
+                
+                <!-- Drag and Drop Zone -->
+                <div id="pdfDropZone" class="pdf-drop-zone">
+                    <div class="drop-zone-content">
+                        <span class="drop-zone-icon">📄</span>
+                        <p class="drop-zone-text">Dra og slipp PDF-filer her</p>
+                        <p class="drop-zone-subtext">eller klikk for å velge filer</p>
+                        <input type="file" id="pdfDropInput" accept=".pdf" multiple style="display: none;">
+                    </div>
+                </div>
+                
+                <div id="linesList" class="lines-list"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal for New Project -->
+    <div id="newProjectModal" class="modal">
+        <div class="modal-content">
+            <h2>Opprett nytt prosjekt</h2>
+            <form id="newProjectForm">
+                <div class="form-group">
+                    <label for="projectNumber">Prosjektnummer*</label>
+                    <input type="text" id="projectNumber" required placeholder="f.eks., PRJ-2025-001">
+                </div>
+                <div class="form-group">
+                    <label for="customerName">Kundenavn*</label>
+                    <input type="text" id="customerName" required placeholder="f.eks., Acme AS">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary cancel-btn">Avbryt</button>
+                    <button type="submit" class="btn btn-primary">Opprett</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Edit Project -->
+    <div id="editProjectModal" class="modal">
+        <div class="modal-content">
+            <h2>Rediger prosjekt</h2>
+            <form id="editProjectForm">
+                <div class="form-group">
+                    <label for="editProjectNumber">Prosjektnummer*</label>
+                    <input type="text" id="editProjectNumber" required>
+                </div>
+                <div class="form-group">
+                    <label for="editCustomerName">Kundenavn*</label>
+                    <input type="text" id="editCustomerName" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" id="deleteProjectBtn" class="btn btn-danger">Slett prosjekt</button>
+                    <button type="button" class="btn btn-secondary cancel-btn">Avbryt</button>
+                    <button type="submit" class="btn btn-primary">Lagre endringer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Edit Package -->
+    <div id="editPackageModal" class="modal">
+        <div class="modal-content">
+            <h2>Rediger pakke</h2>
+            <form id="editPackageForm">
+                <div class="form-group">
+                    <label for="editPackageName">Pakkenavn*</label>
+                    <input type="text" id="editPackageName" required>
+                </div>
+                <div class="form-group">
+                    <label for="editPipeType">Type rør</label>
+                    <select id="editPipeType">
+                        <option value="">Velg type rør...</option>
+                        <option value="PVC">PVC</option>
+                        <option value="PE">PE (Polyetylen)</option>
+                        <option value="PP">PP (Polypropylen)</option>
+                        <option value="Betong">Betong</option>
+                        <option value="Stål">Stål</option>
+                        <option value="Støpejern">Støpejern</option>
+                        <option value="Keramikk">Keramikk</option>
+                        <option value="GRP">GRP (Glassfiberarmert plast)</option>
+                        <option value="Annet">Annet</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editLining">Lining</label>
+                    <select id="editLining">
+                        <option value="">Velg lining...</option>
+                        <option value="Ingen">Ingen</option>
+                        <option value="Epoxy">Epoxy</option>
+                        <option value="Polyuretan">Polyuretan</option>
+                        <option value="Polypropylen">Polypropylen (PP)</option>
+                        <option value="CIPP">CIPP (Cured-in-place pipe)</option>
+                        <option value="GRP-lining">GRP-lining</option>
+                        <option value="PE-lining">PE-lining</option>
+                        <option value="Sementbasert">Sementbasert</option>
+                        <option value="Annet">Annet</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editPackageCommentInput">Kommentar</label>
+                    <textarea id="editPackageCommentInput" rows="3"></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary cancel-btn">Avbryt</button>
+                    <button type="submit" class="btn btn-primary">Lagre endringer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for New Package -->
+    <div id="newPackageModal" class="modal">
+        <div class="modal-content">
+            <h2>Opprett ny testpakke</h2>
+            <div id="modalProjectInfo" class="modal-project-info"></div>
+            <form id="newPackageForm">
+                <div class="form-group">
+                    <label for="packageName">Pakkenavn*</label>
+                    <input type="text" id="packageName" required>
+                </div>
+                <div class="form-group">
+                    <label for="pipeType">Type rør</label>
+                    <select id="pipeType">
+                        <option value="">Velg type rør...</option>
+                        <option value="PVC">PVC</option>
+                        <option value="PE">PE (Polyetylen)</option>
+                        <option value="PP">PP (Polypropylen)</option>
+                        <option value="Betong">Betong</option>
+                        <option value="Stål">Stål</option>
+                        <option value="Støpejern">Støpejern</option>
+                        <option value="Keramikk">Keramikk</option>
+                        <option value="GRP">GRP (Glassfiberarmert plast)</option>
+                        <option value="Annet">Annet</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="lining">Lining</label>
+                    <select id="lining">
+                        <option value="">Velg lining...</option>
+                        <option value="Ingen">Ingen</option>
+                        <option value="Epoxy">Epoxy</option>
+                        <option value="Polyuretan">Polyuretan</option>
+                        <option value="Polypropylen">Polypropylen (PP)</option>
+                        <option value="CIPP">CIPP (Cured-in-place pipe)</option>
+                        <option value="GRP-lining">GRP-lining</option>
+                        <option value="PE-lining">PE-lining</option>
+                        <option value="Sementbasert">Sementbasert</option>
+                        <option value="Annet">Annet</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="packageCommentInput">Kommentar</label>
+                    <textarea id="packageCommentInput" rows="3"></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary cancel-btn">Avbryt</button>
+                    <button type="submit" class="btn btn-primary">Opprett</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Edit Line -->
+    <div id="editLineModal" class="modal">
+        <div class="modal-content">
+            <h2>Rediger rørseksjon</h2>
+            <form id="editLineForm">
+                <div class="form-group">
+                    <label for="editLineName">Seksjonsnavn/ID*</label>
+                    <input type="text" id="editLineName" required>
+                </div>
+                <div class="form-group">
+                    <label for="editLineNumber">Seksjonsnummer</label>
+                    <input type="number" id="editLineNumber">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary cancel-btn">Avbryt</button>
+                    <button type="submit" class="btn btn-primary">Lagre endringer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for New Line/PDF -->
+    <div id="newLineModal" class="modal">
+        <div class="modal-content">
+            <h2>Legg til rørseksjon</h2>
+            <form id="newLineForm">
+                <div class="form-group">
+                    <label for="lineName">Seksjonsnavn/ID*</label>
+                    <input type="text" id="lineName" required placeholder="f.eks., Seksjon A-1, P&ID 100-1">
+                </div>
+                <div class="form-group">
+                    <label for="lineNumber">Seksjonsnummer</label>
+                    <input type="number" id="lineNumber" value="1">
+                </div>
+                <div class="form-group">
+                    <label for="pdfFile">ISO-tegning (PDF)</label>
+                    <input type="file" id="pdfFile" accept=".pdf">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary cancel-btn">Avbryt</button>
+                    <button type="submit" class="btn btn-primary">Legg til</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for New Remark -->
+    <div id="newRemarkModal" class="modal">
+        <div class="modal-content">
+            <h2>Legg til merknad</h2>
+            <form id="newRemarkForm">
+                <div class="form-group">
+                    <label for="remarkImage">Bilde*</label>
+                    <input type="file" id="remarkImage" accept="image/*" required>
+                    <div id="imagePreview"></div>
+                </div>
+                <div class="form-group">
+                    <label for="remarkComment">Kommentar</label>
+                    <textarea id="remarkComment" rows="3" placeholder="Legg til en kommentar for denne merknaden..."></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary cancel-btn">Avbryt</button>
+                    <button type="submit" class="btn btn-primary">Legg til</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Viewing/Editing Remark -->
+    <div id="viewRemarkModal" class="modal">
+        <div class="modal-content large">
+            <h2>Merknadsdetaljer</h2>
+            <div id="remarkImageView"></div>
+            <div class="form-group">
+                <label for="editRemarkComment">Kommentar</label>
+                <textarea id="editRemarkComment" rows="3"></textarea>
+            </div>
+            <div class="modal-actions">
+                <button type="button" id="deleteRemarkBtn" class="btn btn-danger">Slett</button>
+                <button type="button" class="btn btn-secondary close-btn">Lukk</button>
+                <button type="button" id="saveRemarkCommentBtn" class="btn btn-primary">Lagre kommentar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for PDF Viewer -->
+    <div id="pdfViewerModal" class="modal">
+        <div class="modal-content pdf-viewer-modal">
+            <div class="pdf-viewer-header">
+                <h2 id="pdfViewerTitle">ISO-tegning</h2>
+                <span id="pdfViewerCounter" class="pdf-counter"></span>
+            </div>
+            <div class="pdf-viewer-container">
+                <button id="pdfPrevBtn" class="pdf-nav-btn pdf-prev" title="Forrige (←)">‹</button>
+                <iframe id="pdfViewerFrame" class="pdf-viewer-frame"></iframe>
+                <button id="pdfNextBtn" class="pdf-nav-btn pdf-next" title="Neste (→)">›</button>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary close-btn">Lukk</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for OCR Configuration -->
+    <div id="ocrConfigModal" class="modal">
+        <div class="modal-content ocr-modal">
+            <h2>Konfigurer OCR-områder</h2>
+            <p class="ocr-instructions">
+                Marker to områder på PDF-en ved å klikke og dra:<br>
+                <strong>1. Document ID-Code område (blått)</strong><br>
+                <strong>2. Sheet nummer område (grønt)</strong>
+            </p>
+            <div id="ocrCanvasContainer" class="ocr-canvas-container">
+                <canvas id="ocrCanvas"></canvas>
+            </div>
+            <div class="ocr-status">
+                <span id="ocrStatusText">Marker første område (Document ID-Code)</span>
+            </div>
+            <div class="modal-actions">
+                <button type="button" id="ocrResetBtn" class="btn btn-secondary">Tilbakestill områder</button>
+                <button type="button" id="ocrSkipBtn" class="btn btn-secondary">Hopp over OCR</button>
+                <button type="button" id="ocrSaveBtn" class="btn btn-primary" disabled>Lagre og fortsett</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
