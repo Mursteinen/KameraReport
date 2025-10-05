@@ -15,8 +15,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <h1>Kamerainspeksjonsrapporter</h1>
                 <div style="display: flex; gap: 10px; margin-left: auto;">
-                    <button id="changePasswordBtn" class="btn btn-secondary">🔑 Endre passord</button>
-                    <button id="logoutBtn" class="btn btn-secondary">🚪 Logg ut</button>
+                    <button id="settingsBtn" class="btn btn-secondary">⚙️ Innstillinger</button>
                 </div>
             </div>
             <nav id="breadcrumb" class="breadcrumb"></nav>
@@ -390,6 +389,74 @@
                 <button type="button" id="ocrSkipBtn" class="btn btn-secondary">Hopp over OCR</button>
                 <button type="button" id="ocrSaveBtn" class="btn btn-primary" disabled>Lagre og fortsett</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Modal for Settings -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <h2>⚙️ Innstillinger</h2>
+            
+            <div class="settings-section">
+                <h3>🔑 Endre passord</h3>
+                <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
+                    Endre ditt passord for å holde kontoen sikker
+                </p>
+                <button type="button" id="changePasswordBtnInSettings" class="btn btn-primary">Endre passord</button>
+            </div>
+
+            <div class="settings-section" style="border-top: 1px solid #e0e0e0; padding-top: 20px;">
+                <h3>🚪 Logg ut</h3>
+                <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
+                    Logg ut av systemet
+                </p>
+                <button type="button" id="logoutBtnInSettings" class="btn btn-secondary">Logg ut</button>
+            </div>
+
+            <div class="settings-section" style="border-top: 1px solid #e0e0e0; padding-top: 20px;">
+                <h3>⚠️ Resett data</h3>
+                <p style="color: #c33; font-size: 14px; margin-bottom: 15px;">
+                    <strong>ADVARSEL:</strong> Dette vil permanent slette alle prosjekter, pakker, PDF-er og bilder. Denne handlingen kan ikke angres!
+                </p>
+                <button type="button" id="resetDataBtn" class="btn btn-danger">Resett alle data</button>
+            </div>
+
+            <div class="modal-actions" style="margin-top: 30px;">
+                <button type="button" class="btn btn-secondary close-btn">Lukk</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Reset Data Confirmation -->
+    <div id="resetDataModal" class="modal">
+        <div class="modal-content">
+            <h2 style="color: #c33;">⚠️ Bekreft sletting av alle data</h2>
+            <p style="margin: 20px 0; font-size: 16px;">
+                Du er i ferd med å <strong>permanent slette</strong> alle data i systemet. Dette inkluderer:
+            </p>
+            <ul style="margin: 20px 0; padding-left: 30px; color: #666;">
+                <li>Alle prosjekter</li>
+                <li>Alle testpakker</li>
+                <li>Alle PDF-filer</li>
+                <li>Alle bilder og merknader</li>
+            </ul>
+            <p style="color: #c33; font-weight: bold; margin: 20px 0;">
+                Denne handlingen kan IKKE angres!
+            </p>
+            <form id="resetDataForm">
+                <div class="form-group">
+                    <label for="resetConfirmText">Skriv <strong>SLETT ALT</strong> for å bekrefte*</label>
+                    <input type="text" id="resetConfirmText" required placeholder="Skriv SLETT ALT">
+                </div>
+                <div class="form-group">
+                    <label for="resetPassword">Ditt passord*</label>
+                    <input type="password" id="resetPassword" required placeholder="Skriv inn passordet ditt">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary cancel-btn">Avbryt</button>
+                    <button type="submit" class="btn btn-danger">Slett alle data</button>
+                </div>
+            </form>
         </div>
     </div>
 
