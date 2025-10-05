@@ -374,7 +374,7 @@ app.get('/api/packages/:id/generate-report', async (req, res) => {
     }
 });
 
-// Export project with all data as JSON
+// Export project with all data and files as ZIP
 app.get('/api/projects/:id/export', async (req, res) => {
     try {
         const project = await dbHelpers.getProjectById(req.params.id);
@@ -396,21 +396,96 @@ app.get('/api/projects/:id/export', async (req, res) => {
             exportData.packages.push(fullPackage);
         }
 
-        // Send as JSON file
-        const filename = `${project.project_number.replace(/[^a-z0-9]/gi, '_')}_export.json`;
-        res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-        res.json(exportData);
+        // Create ZIP file
+        const tempDir = path.join(__dirname, 'uploads', 'temp');
+        if (!fs.existsSync(tempDir)) {
+            fs.mkdirSync(tempDir, { recursive: true });
+        }
+
+        const zipFilename = `${project.project_number.replace(/[^a-z0-9]/gi, '_')}_export.zip`;
+        const zipPath = path.join(tempDir, zipFilename);
+
+        const output = fs.createWriteStream(zipPath);
+        const archive = archiver('zip', { zlib: { level: 9 } });
+
+        output.on('close', () => {
+            res.download(zipPath, zipFilename, (err) => {
+                if (err) {
+                    console.error('Error sending ZIP:', err);
+                }
+                // Clean up
+                setTimeout(() => {
+                    if (fs.existsSync(zipPath)) {
+                        fs.unlinkSync(zipPath);
+                    }
+                }, 5000);
+            });
+        });
+
+        archive.on('error', (err) => {
+            throw err;
+        });
+
+        archive.pipe(output);
+
+        // Add data.json
+        archive.append(JSON.stringify(exportData, null, 2), { name: 'data.json' });
+
+        // Add all PDF files
+        for (const pkg of exportData.packages) {
+            for (const line of pkg.pdfLines) {
+                if (line.pdf_path) {
+                    const pdfFullPath = path.join(__dirname, line.pdf_path);
+                    if (fs.existsSync(pdfFullPath)) {
+                        archive.file(pdfFullPath, { name: `files${line.pdf_path}` });
+                    }
+                }
+            }
+        }
+
+        // Add all remark images
+        for (const pkg of exportData.packages) {
+            for (const line of pkg.pdfLines) {
+                for (const remark of line.remarks) {
+                    if (remark.image_path) {
+                        const imgFullPath = path.join(__dirname, remark.image_path);
+                        if (fs.existsSync(imgFullPath)) {
+                            archive.file(imgFullPath, { name: `files${remark.image_path}` });
+                        }
+                    }
+                }
+            }
+        }
+
+        await archive.finalize();
+
     } catch (err) {
         console.error('Error exporting project:', err);
         res.status(500).json({ error: err.message });
     }
 });
 
-// Import project from JSON
-app.post('/api/projects/import', async (req, res) => {
+// Import project from ZIP (with multer for file upload)
+const importUpload = multer({ dest: path.join(__dirname, 'uploads', 'temp') });
+const AdmZip = require('adm-zip');
+
+app.post('/api/projects/import', importUpload.single('file'), async (req, res) => {
     try {
-        const importData = req.body;
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+
+        const zipPath = req.file.path;
+        const zip = new AdmZip(zipPath);
+        const zipEntries = zip.getEntries();
+
+        // Extract data.json
+        const dataEntry = zipEntries.find(e => e.entryName === 'data.json');
+        if (!dataEntry) {
+            return res.status(400).json({ error: 'Invalid export file - missing data.json' });
+        }
+
+        const importData = JSON.parse(dataEntry.getData().toString('utf8'));
         
         if (!importData.project || !importData.packages) {
             return res.status(400).json({ error: 'Invalid import format' });
@@ -434,31 +509,63 @@ app.post('/api/projects/import', async (req, res) => {
 
             // Create lines
             for (const line of pkg.pdfLines) {
+                let pdfPath = null;
+                
+                // Extract and save PDF if exists
+                if (line.pdf_path) {
+                    const pdfEntry = zipEntries.find(e => e.entryName === `files${line.pdf_path}`);
+                    if (pdfEntry) {
+                        const pdfFilename = path.basename(line.pdf_path);
+                        const newPdfPath = path.join(pdfsDir, pdfFilename);
+                        fs.writeFileSync(newPdfPath, pdfEntry.getData());
+                        pdfPath = line.pdf_path;
+                    }
+                }
+                
                 const newLine = await dbHelpers.createPdfLine(
                     newPackage.id,
                     line.name,
-                    null, // PDF paths won't be imported
+                    pdfPath,
                     line.line_number
                 );
 
-                // Create remarks (without images)
+                // Create remarks with images
                 for (const remark of line.remarks) {
+                    let imagePath = '';
+                    
+                    if (remark.image_path) {
+                        const imgEntry = zipEntries.find(e => e.entryName === `files${remark.image_path}`);
+                        if (imgEntry) {
+                            const imgFilename = path.basename(remark.image_path);
+                            const newImgPath = path.join(remarksDir, imgFilename);
+                            fs.writeFileSync(newImgPath, imgEntry.getData());
+                            imagePath = remark.image_path;
+                        }
+                    }
+                    
                     await dbHelpers.createRemark(
                         newLine.id,
-                        '', // Image paths won't be imported
+                        imagePath,
                         remark.comment || ''
                     );
                 }
             }
         }
 
+        // Clean up temp file
+        fs.unlinkSync(zipPath);
+
         res.json({ 
             success: true, 
             projectId: newProject.id,
-            message: 'Prosjekt importert uten filer (PDFs og bilder)'
+            message: 'Prosjekt importert med alle filer!'
         });
     } catch (err) {
         console.error('Error importing project:', err);
+        // Clean up temp file on error
+        if (req.file && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
         res.status(500).json({ error: err.message });
     }
 });

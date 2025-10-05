@@ -244,14 +244,20 @@ function setupEventListeners() {
         const file = e.target.files[0];
         if (!file) return;
         
+        // Check if it's a ZIP file
+        if (!file.name.endsWith('.zip')) {
+            alert('Vennligst velg en ZIP-fil eksportert fra systemet');
+            e.target.value = '';
+            return;
+        }
+        
         try {
-            const text = await file.text();
-            const importData = JSON.parse(text);
+            const formData = new FormData();
+            formData.append('file', file);
             
             const response = await fetch('/api/projects/import', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(importData)
+                body: formData
             });
             
             const result = await response.json();
