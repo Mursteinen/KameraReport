@@ -239,9 +239,9 @@ function setupEventListeners() {
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
             
-            alert('Prosjekt eksportert som ZIP med alle filer!');
+            showToast('Prosjekt eksportert som ZIP med alle filer!');
         } catch (err) {
-            alert('Feil ved eksport av prosjekt: ' + err.message);
+            showToast('Feil ved eksport av prosjekt: ' + err.message, 'error');
         }
     });
     
@@ -1290,6 +1290,32 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// Toast notification system
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type === 'error' ? 'toast-error' : type === 'warning' ? 'toast-warning' : ''}`;
+    
+    const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : '⚠';
+    
+    toast.innerHTML = `
+        <span class="toast-icon">${icon}</span>
+        <span class="toast-message">${escapeHtml(message)}</span>
+    `;
+    
+    container.appendChild(toast);
+    
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        toast.classList.add('removing');
+        setTimeout(() => {
+            if (toast.parentNode) {
+                container.removeChild(toast);
+            }
+        }, 300);
+    }, 3000);
 }
 
 // ========== OCR CONFIGURATION FUNCTIONS ==========
