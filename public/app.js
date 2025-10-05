@@ -90,9 +90,9 @@ function setupEventListeners() {
             closeModal(editProjectModal);
             document.getElementById('editProjectForm').reset();
             loadProjects();
-            alert('Prosjektet ble oppdatert!');
+            showToast('Prosjektet ble oppdatert!');
         } catch (err) {
-            alert('Feil ved oppdatering av prosjekt: ' + err.message);
+            showToast('Feil ved oppdatering av prosjekt: ' + err.message, 'error');
         }
     });
 
