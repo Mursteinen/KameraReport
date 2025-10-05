@@ -47,10 +47,75 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Setup event listeners
 function setupEventListeners() {
-    // Change password button
-    document.getElementById('changePasswordBtn').addEventListener('click', () => {
+    // Settings button
+    document.getElementById('settingsBtn').addEventListener('click', () => {
+        openModal(document.getElementById('settingsModal'));
+    });
+
+    // Change password from settings
+    document.getElementById('changePasswordBtnInSettings').addEventListener('click', () => {
+        closeModal(document.getElementById('settingsModal'));
         document.getElementById('changePasswordForm').reset();
         openModal(document.getElementById('changePasswordModal'));
+    });
+
+    // Logout from settings
+    document.getElementById('logoutBtnInSettings').addEventListener('click', async () => {
+        try {
+            const response = await fetch('/api/auth/logout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (response.ok) {
+                window.location.href = '/login.html';
+            } else {
+                showToast('Feil ved utlogging', 'error');
+            }
+        } catch (err) {
+            showToast('Feil ved utlogging: ' + err.message, 'error');
+        }
+    });
+
+    // Reset data button
+    document.getElementById('resetDataBtn').addEventListener('click', () => {
+        closeModal(document.getElementById('settingsModal'));
+        document.getElementById('resetDataForm').reset();
+        openModal(document.getElementById('resetDataModal'));
+    });
+
+    // Reset data form
+    document.getElementById('resetDataForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const confirmText = document.getElementById('resetConfirmText').value;
+        const password = document.getElementById('resetPassword').value;
+        
+        if (confirmText !== 'SLETT ALT') {
+            showToast('Du må skrive "SLETT ALT" for å bekrefte', 'error');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/auth/reset-data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ confirmText, password })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                closeModal(document.getElementById('resetDataModal'));
+                showToast('Alle data er slettet!');
+                // Reload projects to show empty state
+                loadProjects();
+            } else {
+                showToast(data.error || 'Feil ved sletting av data', 'error');
+            }
+        } catch (err) {
+            showToast('Feil ved sletting av data: ' + err.message, 'error');
+        }
     });
 
     // Change password form
